@@ -1,0 +1,8 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'id.langkahberdua.app'
+ compileSdk 35
+ defaultConfig { applicationId 'id.langkahberdua.nativeapp'; minSdk 24; targetSdk 34; versionCode 3; versionName '0.3-local-beta' }
+ buildTypes { debug { debuggable false } }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

@@ -1,16 +1,11 @@
-# Langkah Berdua
+# Langkah Berdua Android
 
-Proyek aplikasi Android native untuk pencatatan keuangan pasangan.
+Versi 0.3 lokal beta: antarmuka Android native tanpa browser/WebView.
 
-## Status pengembangan
+Tersedia: pilihan foto pembuka dari galeri lokal dan “Semoga bisa disemogakan”, transaksi pemasukan/pengeluaran tersimpan SQLite, pengubahan, sampah/pemulihan, saldo, ekspor CSV melalui pemilih dokumen Android, target/alokasi tabungan dan daftar belanja lokal.
 
-Source Android sebelumnya masih berupa kerangka tampilan. APK native belum berhasil dibangun atau diuji. Login, transaksi tersimpan, sinkronisasi pasangan, dan pemindaian struk belum diimplementasikan pada versi native. Jangan gunakan kerangka tersebut untuk menyimpan data keuangan.
+Belum tersedia: login, sinkronisasi pasangan, OCR, dompet/transfer, database cloud, aplikasi iPhone. Semua data versi ini berada di perangkat; menghapus aplikasi dapat menghapus data. Tidak ada data contoh atau saldo simulasi. CSV adalah ekspor transaksi, bukan cadangan seluruh aplikasi.
 
-## Arah implementasi
+Build: JDK 17, Android SDK 35, Gradle 8.9. Jalankan `gradle :app:assembleDebug`. GitHub Actions menghasilkan APK bertanda tangan debug untuk uji instalasi pribadi; bukan rilis Play Store. Signing key build debug dapat berbeda antarrun sehingga pembaruan versi mendatang belum menjamin pemasangan di atas APK ini.
 
-- Antarmuka bahasa Indonesia, Rupiah, tema Sage dan Krem.
-- Layar pembuka dengan foto pasangan dan tulisan “Semoga bisa disemogakan”.
-- Pencatatan transaksi dengan penyimpanan dan validasi nominal.
-- Build APK melalui GitHub Actions setelah source siap.
-
-Repository ini terpisah dari Phone Finder.
+App ID `id.langkahberdua.nativeapp` terpisah dari pembungkus browser lama agar instalasi baru tidak mengganti aplikasi lama.
