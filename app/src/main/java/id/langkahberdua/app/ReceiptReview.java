@@ -1,0 +1,31 @@
+package id.langkahberdua.app;
+import android.app.*;
+import android.content.*;
+import android.widget.*;
+import androidx.core.content.FileProvider;
+import org.json.*;
+import java.io.File;
+import java.util.*;
+
+final class ReceiptReview {
+ final MainActivity a;
+ ReceiptReview(MainActivity a){this.a=a;}
+ void show(JSONObject receipt,String path,String hash,Store.Row old)throws JSONException {
+  LinearLayout f=a.form();f.addView(a.text("Periksa semua hasil OCR. Isian kosong berarti tidak terbaca. Satu struk disimpan sebagai satu pengeluaran. Foto asli tersimpan hanya pada ponsel pemindai.",14));if(old==null&&a.store.duplicate(hash))f.addView(a.text("PERIKSA DUPLIKAT: foto yang sama sudah pernah dicatat.",15));
+  EditText name=a.input(f,"Nama toko / judul",receipt.optString("store"),false);String[] date={receipt.optString("date")};a.dateButton(f,date);
+  EditText total=a.input(f,"Total pembayaran (wajib diperiksa)",receipt.optString("total"),true),discount=a.input(f,"Diskon tambahan struk, jika ada",receipt.optString("discount"),true),tax=a.input(f,"Pajak, jika ada",receipt.optString("tax"),true),fee=a.input(f,"Biaya tambahan, jika ada",receipt.optString("fee"),true);
+  EditText category=a.input(f,"Kategori (boleh diubah)",old==null?"Belanja":old.display().optString("category"),false),note=a.input(f,"Catatan",old==null?"":old.display().optString("note"),false);Spinner scope=a.visibility(f,old);
+  f.addView(a.text("Rincian barang\nJumlah harga adalah total baris setelah diskon barang. Kosongkan informasi yang tidak ada pada struk.",14));LinearLayout lines=a.column();f.addView(lines);List<EditText[]> editors=new ArrayList<>();JSONArray array=receipt.optJSONArray("items");if(array!=null)for(int i=0;i<array.length();i++)addItem(lines,editors,array.getJSONObject(i));f.addView(a.button("Tambah rincian barang",()->addItem(lines,editors,new JSONObject())));
+  if(!path.isEmpty())f.addView(a.button("Lihat foto asli",()->{try{Intent i=new Intent(Intent.ACTION_VIEW);i.setDataAndType(FileProvider.getUriForFile(a,a.getPackageName()+".files",new File(path)),"image/*");i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);a.startActivity(i);}catch(Exception e){a.message("Aplikasi pembuka foto tidak tersedia.");}}));
+  f.addView(a.button("Lihat teks OCR",()->{TextView raw=a.text(receipt.optString("raw","Tidak ada teks OCR"),14);raw.setTextIsSelectable(true);ScrollView scroll=new ScrollView(a);scroll.addView(raw);a.show(new AlertDialog.Builder(a).setTitle("Teks asli OCR").setView(scroll).setPositiveButton("Tutup",null).create());}));
+  AlertDialog d=a.dialog("Periksa hasil struk",f,"Simpan pengeluaran");if(old!=null)f.addView(a.button("Hapus transaksi struk",()->a.confirm("Pindahkan transaksi struk ke sampah?",()->{a.changeDeleted(old,true);d.dismiss();})));
+  d.getButton(-1).setOnClickListener(v->{try{String title=a.validTitle(name);long payment=a.requiredMoney(total);if(date[0].isEmpty())throw new IllegalArgumentException("Pilih tanggal struk dahulu.");Long dis=a.optionalMoney(discount),ta=a.optionalMoney(tax),fe=a.optionalMoney(fee);long sum=0;boolean incomplete=editors.isEmpty();JSONArray items=new JSONArray();StringBuilder warnings=new StringBuilder();
+   for(EditText[] fields:editors){String label=fields[0].getText().toString().trim();if(label.isEmpty())throw new IllegalArgumentException("Isi nama barang atau hapus baris kosong.");Long q=a.optionalMoney(fields[1]),unit=a.optionalMoney(fields[2]),amount=a.optionalMoney(fields[3]);if(q!=null&&q<=0)throw new IllegalArgumentException("Jumlah barang harus positif atau kosong.");if(amount==null)incomplete=true;else sum=Math.addExact(sum,amount);if(q!=null&&unit!=null&&amount!=null&&Math.multiplyExact(q,unit)!=amount)warnings.append("Harga × jumlah pada ").append(label).append(" berbeda dengan total baris; periksa diskon barang.\n");items.put(new JSONObject().put("name",label).put("qty",q==null?"":q.toString()).put("unit",unit==null?"":unit.toString()).put("amount",amount==null?"":amount.toString()));}
+   if(incomplete)warnings.append("Rincian belum lengkap sehingga total belum dapat dicocokkan.\n");else {long calculated=sum-(dis==null?0:dis)+(ta==null?0:ta)+(fe==null?0:fe);if(calculated!=payment)warnings.append("Jumlah rincian setelah diskon, pajak, dan biaya: ").append(a.money(calculated)).append(". Total pembayaran: ").append(a.money(payment)).append(".\n");}
+   if(old==null&&a.store.duplicate(hash))warnings.append("Foto identik sudah pernah dicatat. Pastikan bukan transaksi yang sama.\n");if(category.length()>80||note.length()>16000)throw new IllegalArgumentException("Kategori atau catatan terlalu panjang.");
+   JSONObject result=new JSONObject().put("store",title).put("date",date[0]).put("total",Long.toString(payment)).put("discount",dis==null?"":dis.toString()).put("tax",ta==null?"":ta.toString()).put("fee",fe==null?"":fe.toString()).put("items",items).put("raw",receipt.optString("raw"));if(result.toString().length()>20000)throw new IllegalArgumentException("Rincian terlalu panjang. Kurangi teks atau baris.");
+   JSONObject record=Store.make(title,payment,"expense",date[0],scope.getSelectedItemPosition()==1?"shared":"private",note.getText().toString(),category.getText().toString(),result.toString());if(old!=null){record.put("uuid",old.id);record.put("version",old.accepted.optLong("version",0));}Runnable commit=()->{try{a.save(record,path,hash);d.dismiss();}catch(Exception e){a.message(e.getMessage());}};if(warnings.length()>0)a.confirm(warnings+"\nTetap simpan total pembayaran yang telah Anda periksa?",commit);else commit.run();
+  }catch(Exception e){a.message(e.getMessage()==null?"Periksa rincian struk.":e.getMessage());}});
+ }
+ void addItem(LinearLayout lines,List<EditText[]> editors,JSONObject item){LinearLayout row=a.column();row.setPadding(a.dp(8),a.dp(10),a.dp(8),a.dp(12));a.rounded(row,android.graphics.Color.WHITE);EditText[] e={a.input(row,"Barang",item.optString("name"),false),a.input(row,"Jumlah barang (opsional)",item.optString("qty"),true),a.input(row,"Harga satuan (opsional)",item.optString("unit"),true),a.input(row,"Jumlah harga barang",item.optString("amount"),true)};editors.add(e);row.addView(a.button("Hapus baris",()->{editors.remove(e);lines.removeView(row);}));lines.addView(row);}
+}

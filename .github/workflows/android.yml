@@ -24,7 +24,36 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Uji backend dan parser struk
+        run: |
+          node tests/backend.test.cjs
+          mkdir -p build/parser-test
+          javac -d build/parser-test app/src/main/java/id/langkahberdua/app/ReceiptParser.java app/src/main/java/id/langkahberdua/app/Csv.java tests/ReceiptParserTest.java
+          java -cp build/parser-test id.langkahberdua.app.ReceiptParserTest
       - run: gradle :app:assembleDebug --no-daemon
+      - name: Aktifkan emulator
+        run: |
+          sudo chmod 666 /dev/kvm
+      - name: Uji Android dan OCR
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            gradle :app:connectedDebugAndroidTest --no-daemon
+            adb pull /sdcard/Android/data/id.langkahberdua.connected/files/beranda.png build/beranda.png
+      - name: Simpan hasil pengujian
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Langkah-Berdua-Hasil-Uji
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            build/beranda.png
       - uses: actions/upload-artifact@v4
         with:
           name: Langkah-Berdua-Android-Native
